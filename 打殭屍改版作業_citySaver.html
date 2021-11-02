@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City Saver</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        
+        html,
+        body {
+            height: 100%;
+        }
+        
+        body {
+            height: 100%;
+            background: url(./img/bg.jpg) no-repeat center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        
+        #game {
+            width: 85%;
+            height: 85%;
+            position: relative;
+            cursor: url(./img/superman3.png) 32 32, auto;
+        }
+        
+        #btn-start {
+            position: absolute;
+            bottom: 30%;
+            left: 50%;
+            transform: translate(-50%, 10%);
+            width: 300px;
+            height: 80px;
+            line-height: 80px;
+            font-size: 2.5rem;
+            font-weight: bolder;
+            border-radius: 20px;
+            box-shadow: 0 0 10px 5px rgb(0, 0, 0);
+            z-index: 2;
+            background: linear-gradient(rgba(83, 5, 5, 0.966), rgb(255, 0, 0));
+            color: white;
+            letter-spacing: 5px;
+        }
+        
+        #scoreboard {
+            position: absolute;
+            font-weight: bolder;
+            bottom: 3%;
+            font-size: 2rem;
+            color: white;
+            word-spacing: 10px;
+        }
+        
+        #logo {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -40%);
+            z-index: 1;
+            width: 400px;
+            height: 400px;
+            filter: drop-shadow(0 0 15px rgb(255, 0, 0))
+        }
+        
+        #fail,
+        #hero {
+            width: 60%;
+            height: 100%;
+        }
+        
+        #game .bomb {
+            height: 80px;
+            width: 80px;
+            position: absolute;
+        }
+        
+        #game .aid {
+            height: 80px;
+            width: 100px;
+            position: absolute;
+        }
+        
+        #game .fire {
+            height: 200px;
+            width: 200px;
+            position: absolute;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="game"></div>
+    <input type="button" value="拯救城市" id="btn-start">
+    <img src="./img/logocitysaver.png" id="logo">
+    <div id="scoreboard">
+        目前分數:
+        <span class="score">0</span>分 剩餘秒數:
+        <span class="time">0</span>秒 最高分玩家：
+        <span class="highName">無名英雄</span> 最高分數：
+        <span class="highScore">0</span>
+    </div>
+    <img id="fail" src="./img/爆炸.png">
+    <img id="hero" src="./img/hero.png">
+
+
+    <script src="./jquery-3.6.0.min.js"></script>
+    <script>
+        // 重設原始分數
+        let score = 0;
+        let time = 0;
+        let countDown = 0;
+
+        let high = {
+            name: "無名英雄",
+            score: 0
+        }
+
+        // 顯示最高分紀錄
+        const storage = JSON.parse(localStorage.getItem("citySaver"))
+            // 若有最高分紀錄顯示在螢幕上
+        if (storage) {
+            high.name = storage.name;
+            high.score = storage.score
+
+            $(".highName").text(high.name)
+            $(".highScore").text(high.score)
+        }
+
+        // 先隱藏最終失敗以及英雄的圖片
+        $("#fail").hide();
+        $("#hero").hide();
+
+
+        // 當點下開始
+        $("#btn-start").on("click", function() {
+            // 開始按鈕消失以及logo消失
+            $("#btn-start").hide();
+            $("#logo").hide();
+            // 隱藏失敗以及英雄的圖片
+            $("#fail").hide();
+            $("#hero").hide();
+            // 分數重設
+            score = 0;
+            // 分數顯示畫面
+            $(".score").text(score);
+            // 設定倒數計時
+            countDown = 30;
+            // 重複開始
+            timer = setInterval(function() {
+                // 倒數開始
+                countDown--;
+                // 倒數畫面
+                $(".time").text(countDown);
+                // 隨機產出炸彈數量
+                const random = Math.round(Math.random() * 10);
+                // 隨機產出炸彈位置
+                if (random < 5 && $("#game .bomb").length < 10) {
+                    const top = `${Math.round(Math.random()*80)}%`;
+                    const left = `${Math.round(Math.random()*80)}%`;
+                    // 出現炸彈圖片
+                    const bomb = $(`<img src="./img/bomb.png" class="bomb" style="top:${top} ; left:${left}">`);
+                    // 將炸彈圖片放置html裡
+                    $("#game").append(bomb);
+                    // 呼叫炸彈移動函式
+                    move(bomb);
+                }
+
+                // // 隨機產出急救包
+                if ($("#game .aid").length < 2) {
+                    const topAid = `${Math.round(Math.random()*80)}%`;
+                    const leftAid = `${Math.round(Math.random()*80)}%`;
+                    // 急救包圖片
+                    const aid = $(`<img src="./img/急救包.png" class="aid" style="top:${topAid};left:${leftAid}">`);
+                    // 新增至game裡
+                    $("#game").append(aid);
+
+                }
+
+
+                // 時間到結束
+                if (countDown <= 0) {
+                    // 重複停止
+                    clearInterval(timer);
+                    // 照片清除
+                    $("#game img").remove();
+
+                    // 判斷是否拯救成功，若成功需判斷是否超過最高分並改最高分值
+                    if (score > 10) {
+                        // 顯示英雄圖片
+                        $("#hero").show();
+                        // 判斷是否超過最高分
+                        if (score > high.score) {
+                            // 有的話跳出輸入姓名框
+                            let input = prompt("請輸入姓名")
+                            high.name = input || "無名英雄"
+                            high.score = score
+
+                            // 修改最高分數顯示內容
+                            $(".highName").text(high.name);
+                            $(".highScore").text(high.score);
+                            // 儲存資料
+                            localStorage = localStorage.setItem("citySaver", JSON.stringify('high'));
+                        }
+                    } else {
+                        // 失敗顯示失敗圖片
+                        $("#fail").show();
+                    }
+
+                    // 開始按鈕回來並且改字
+                    $("#btn-start").val("重新挑戰");
+                    $("#btn-start").show();
+                }
+            }, 1000);
+        })
+
+
+        // 點擊炸彈變換圖片並且計分
+        $("#game").on("click", ".bomb", function() {
+            $(this).attr("src", "./img/火花6.png");
+            // 動畫停止
+            $(this).stop();
+            // 火花2秒後消失
+            $(this).delay(2000).hide(0);
+            // 標記已變化的class
+            $(this).removeClass("bomb").addClass("fire");
+            // 加分
+            score++;
+            // 顯示分數
+            $(".score").text(score);
+        })
+
+        // 點擊急救包加五分
+        $("#game").on("click", ".aid", function() {
+            // 三秒後消失
+            $(this).hide();
+            // 加五分
+            score += 5;
+            // 顯示分數
+            $(".score").text(score);
+        })
+
+
+        // 炸彈隨機移動
+        const move = (bomb) => {
+            console.log("move")
+                // 炸彈位置隨機產出
+            const top = `${Math.round(Math.random()*80)}%`;
+            const left = `${Math.round(Math.random()*80)}%`;
+            // 動畫
+            bomb.stop().animate({
+                top: top,
+                left: left
+            }, 2000, function() {
+                //倒數時間結束，整個function停止
+                if (countDown <= 0) {
+                    return
+                }
+                // 遞迴
+                move(bomb)
+            })
+        }
+    </script>
+</body>
+
+</html>
